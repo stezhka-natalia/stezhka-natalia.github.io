@@ -84,6 +84,31 @@
 body.s-winter{--accent:#7d5fb8;--accent-soft:#ece5f7;--accent-ink:#644a9e}
 body.s-spring{--accent:#bf5f86;--accent-soft:#f6e1e9;--accent-ink:#934366}
 body.s-summer{--accent:#d0851a;--accent-soft:#fbecd2;--accent-ink:#8f5a0c}
+/* ніч: 22:00–6:00, коли альпака спить */
+body{transition:background-color .9s ease}
+body.night{color-scheme:dark;
+  --paper:#1e2137;--paper2:#2a2e4a;--card:#262a44;--ink:#ece8f6;--ink2:#b7b2ce;--muted:#8a86a8;--line:#353a5b;--line2:#464b70;--dot:#2e3356;
+  --hl:rgba(146,126,232,.45);--sage-soft:#2c3a3a;--mint:rgba(120,190,170,.45);--mint-bg:rgba(90,140,128,.55);
+  --ok:#8cc27a;--ok-soft:#2b3d33;
+  --accent-soft:color-mix(in srgb,var(--accent) 26%,#262a44);--accent-ink:color-mix(in srgb,var(--accent) 45%,#fff);
+  --shadow:0 1px 0 rgba(0,0,0,.25),0 10px 22px -12px rgba(0,0,0,.7)}
+body.night::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.75;animation:twinkle 5s ease-in-out infinite alternate;
+  background-image:radial-gradient(1.4px 1.4px at 8% 12%,#fff,transparent),radial-gradient(1px 1px at 23% 31%,#fff,transparent),radial-gradient(1.6px 1.6px at 71% 9%,#fff,transparent),
+   radial-gradient(1px 1px at 88% 24%,#fff,transparent),radial-gradient(1.2px 1.2px at 47% 18%,#fff,transparent),radial-gradient(1px 1px at 35% 62%,#fff,transparent),
+   radial-gradient(1.3px 1.3px at 93% 55%,#fff,transparent),radial-gradient(1px 1px at 5% 78%,#fff,transparent),radial-gradient(1.5px 1.5px at 62% 84%,#fff,transparent),
+   radial-gradient(1px 1px at 79% 71%,#fff,transparent),radial-gradient(1.2px 1.2px at 17% 50%,#fff,transparent),radial-gradient(1px 1px at 55% 40%,#fff,transparent)}
+@keyframes twinkle{0%{opacity:.35}100%{opacity:.85}}
+body.night #view{position:relative;z-index:1}
+body.night #nav{background:rgba(30,33,55,.93)}
+body.night .due{background:#353152;border-color:#8b7fd4}
+body.night .cp tr.nx td{background:#353152}
+body.night .btn.danger{background:#4a2a33;color:#f4a79c}
+body.night #toast button{color:#5b40b8}
+body.night .alp .zz{color:#e6e8ff;text-shadow:0 0 8px rgba(0,0,0,.4)}
+body.night .pc:not(.lock){color:#2e2620}
+body.night .pc:not(.lock) .pc-k{color:#9a4520}
+body.night .pc.lock{background:linear-gradient(var(--paper2),var(--paper2)) padding-box,repeating-linear-gradient(135deg,#4a4f74 0 10px,var(--paper2) 10px 16px) border-box}
+body.night .masc img,body.night .alp .sway{filter:drop-shadow(0 3px 6px rgba(0,0,0,.45))}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0}
 body{font-family:'Nunito',system-ui,-apple-system,sans-serif;color:var(--ink);background-color:var(--paper);
@@ -254,6 +279,13 @@ textarea.note:focus{border-color:var(--accent)}
 
 /* toast */
 #alpLayer{position:absolute;left:-9999px;top:0;z-index:2;visibility:hidden}
+/* альпака визирає з-за нижньої панелі, коли головна поза екраном */
+#peek{position:fixed;right:14px;bottom:calc(env(safe-area-inset-bottom) + 16px);z-index:39;transform:translateY(135%);transition:transform .42s cubic-bezier(.2,1.25,.4,1);pointer-events:none}
+#peek.show{transform:translateY(0)}
+#peek .pa .alp{pointer-events:auto}
+#peek .pb{position:absolute;right:calc(100% + 2px);bottom:74px;background:var(--card);border:1.5px dashed var(--line2);border-radius:14px 14px 4px 14px;padding:6px 11px;font-weight:800;font-size:13.5px;white-space:nowrap;box-shadow:var(--shadow);opacity:0;transform:scale(.6);transform-origin:100% 100%;transition:opacity .2s,transform .3s cubic-bezier(.2,1.4,.4,1)}
+#peek.show .pb{opacity:1;transform:none;transition-delay:.2s}
+html.peek #toast{bottom:calc(180px + env(safe-area-inset-bottom))}
 .masc-slot{flex:none}
 #toast{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:var(--ink);color:var(--paper);
   padding:12px 16px;border-radius:18px;font-weight:700;font-size:14px;opacity:0;pointer-events:none;transition:.25s;z-index:70;display:flex;gap:14px;align-items:center;width:max-content;max-width:calc(100% - 32px)}
@@ -429,6 +461,7 @@ textarea.note:focus{border-color:var(--accent)}
   <button data-act="tab" data-t="me"><svg viewBox="0 0 24 24"><path d="M12 20s-7.5-4.4-7.5-10A4.3 4.3 0 0 1 12 7.6 4.3 4.3 0 0 1 19.5 10c0 5.6-7.5 10-7.5 10z"/></svg>Я</button>
 </div></nav>
 <div id="alpLayer" aria-hidden="false"></div>
+<div id="peek" aria-hidden="true"><div class="pb"></div><div class="pa"></div></div>
 <div id="toast" role="status" aria-live="polite"></div>
 <input type="file" id="fileImport" accept="application/json,.json" hidden>
 <input type="file" id="fileMascot" accept="image/*" hidden>
@@ -685,6 +718,10 @@ const getDay=d=>S.days[d]||{};
 const mutDay=d=>S.days[d]||(S.days[d]={});
 
 const lastDone={},lastPct={};let alpReact=null,heroAlp=null;const ALP_H=150;
+function isNight(){if(S&&S.nightTheme===false)return false;const h=new Date().getHours();return h>=22||h<6}
+let lastNight=null;
+function applyNight(){const n=isNight();document.body.classList.toggle('night',n);
+  const m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',n?'#1e2137':'#fbf7ee');lastNight=n;return n}
 let tab='today', sel=todayS(), metric='w', calMonth=todayS().slice(0,7), lastToday=todayS();
 
 /* ───────── логіка плану ───────── */
@@ -938,7 +975,24 @@ function placeAlp(){
   layer.style.left=(r.left+window.scrollX)+'px';layer.style.top=(r.top+window.scrollY)+'px';layer.style.visibility='visible';
   heroAlp.setMood(bearMood());
   const re=alpReact;alpReact=null;
-  if(re){if(re.perfect)heroAlp.perfect();else if(re.pop>0)heroAlp.done(re.pop)}
+  if(re&&(re.perfect||re.pop>0)){
+    if(heroVisible()){if(re.perfect)heroAlp.perfect();else heroAlp.done(re.pop)}
+    else if(!stack.length&&!cq.length)peek(re.perfect?'perfect':'done',re.pop);  // якщо відкривається вікно нагороди — там своя альпака
+  }
+}
+function heroVisible(){const s=$('#mascSlot');if(!s)return false;const r=s.getBoundingClientRect(),navTop=$('#nav').getBoundingClientRect().top;
+  return Math.min(r.bottom,navTop)-Math.max(r.top,0)>=r.height*0.55}
+const PEEK_LINES=['Так тримати!','Ще листочок! 🍃','Молодчинка!','Крок ближче до моря 🌊','Бачу-бачу! 👀','Є! 💪','Ура! 💗'];
+let peekAlp=null,peekT=null;
+function peek(kind,n){
+  const box=$('#peek');if(S.mascot||!window.Alpaca||!box)return;
+  const se=season();
+  if(!peekAlp||peekAlp.season!==se){if(peekAlp)peekAlp.el.remove();peekAlp=new Alpaca(se,120);peekAlp.onTap=()=>window.scrollTo({top:0,behavior:'smooth'});$('.pa',box).appendChild(peekAlp.el)}
+  peekAlp.start();peekAlp.mood=bearMood();peekAlp.wake(kind==='perfect'?5200:3200);
+  $('.pb',box).textContent=kind==='perfect'?pick(['Ідеальний день! 💗','Усе виконано! 🎉']):(n>1?`+${n} 🍃 Так тримати!`:pick(PEEK_LINES));
+  box.classList.add('show');document.documentElement.classList.add('peek');
+  setTimeout(()=>{if(kind==='perfect')peekAlp.perfect();else peekAlp.done(n)},300);
+  clearTimeout(peekT);peekT=setTimeout(()=>{box.classList.remove('show');document.documentElement.classList.remove('peek')},kind==='perfect'?3800:2400);
 }
 window.addEventListener('resize',()=>placeAlp());
 try{document.fonts&&document.fonts.ready.then(()=>placeAlp())}catch(e){}
@@ -947,14 +1001,14 @@ function render(top){
   if(!top&&ae&&$('#view').contains(ae)&&/^(TEXTAREA|INPUT)$/.test(ae.tagName)){pendingRender=true;return}
   pendingRender=false;
   const y=window.scrollY;
-  document.body.className='s-'+season();
+  document.body.className='s-'+season();applyNight();
   $('#view').innerHTML=({today:renderToday,path:renderPath,awards:renderAwards,body:renderBody,me:renderMe})[tab]();
   $$('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
   if(tab==='path')layoutRoute();
   if(themeDirty){themeDirty=false;save()}
-  placeAlp();
   if(tab==='today'){const n=$('#note');if(n)n.addEventListener('input',debounce(e=>{mutDay(sel).note=e.target.value;save()},400))}
   window.scrollTo(0,top?0:y);
+  placeAlp();
 }
 document.addEventListener('focusout',()=>{setTimeout(()=>{if(pendingRender&&!/^(TEXTAREA|INPUT)$/.test((document.activeElement||{}).tagName||''))render()},50)});
 function debounce(f,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>f(...a),ms)}}
@@ -982,7 +1036,7 @@ function renderToday(){
   const dObj=parse(sel);
   const ttl=isT?`<b>Сьогодні</b>, ${WD[dObj.getDay()]}, ${dateLong(sel)}`:sel===addDays(t,-1)?`<b>Учора</b>, ${dateLong(sel)} · можна дописати`:`<b>${dateLong(sel)}</b>, ${WD[dObj.getDay()]} · <button class="link" data-act="day" data-d="${t}" style="color:var(--accent-ink);font-weight:800;text-decoration:underline">до сьогодні</button>`;
   const lines=bearLines();if(bubbleIdx<0||bubbleIdx>=lines.length)bubbleIdx=0;
-  let html=`<header class="top"><div class="logo">Стежка<span class="sz">${SEASON_EMO[se][0]}</span></div><div class="dayno">${dayno}</div></header>${weekStrip()}<div class="dayttl">${ttl}</div>`;
+  let html=`<header class="top"><div class="logo">Стежка<span class="sz">${isNight()?'🌙':SEASON_EMO[se][0]}</span></div><div class="dayno">${dayno}</div></header>${weekStrip()}<div class="dayttl">${ttl}</div>`;
 
   // перерва
   if(isT&&S.work&&Date.now()>=S.work.last+P.breakMin*6e4){
@@ -1212,9 +1266,10 @@ function renderMe(){
   html+=`<h2 class="hl">Теми тижнів <small>по черзі</small></h2><div class="card"><div class="s" style="margin:0 0 4px">Щотижня — одна тема з викликом. Вимкнена тема випадає з черги, а теми вимкнених звичок пропускаються самі. Минулі тижні не змінюються.</div>
    ${FOCUS.map(f=>{const blocked=!!(f.needs&&!habitOn(f.needs)),on=!S.themesOff[f.id]&&!blocked;
      return `<div class="row"><div class="ico">${f.e}</div><div class="txt"><div class="t">${esc(f.t)}${curF&&curF.id===f.id?'<span class="tag">цей тиждень</span>':''}</div><div class="s">${blocked?`звичка «${esc(habitById(f.needs).n)}» вимкнена`:`виклик: ${esc(themeLabel(f,Math.max(1,f.n(P))))}`}</div></div><button class="sw ${on?'on':''}" data-act="themeToggle" data-id="${f.id}" ${blocked?'disabled':''} aria-label="Тема «${esc(f.t)}»"></button></div>`}).join('')}</div>`}
+  const nightRow=`<div class="row" style="margin-top:14px;border-top:1.5px dashed var(--line);padding-top:14px"><div class="ico">🌙</div><div class="txt"><div class="t">Нічна тема</div><div class="s">З 22:00 до 6:00 — коли альпака засинає, застосунок темнішає разом із нею</div></div><button class="sw ${S.nightTheme===false?'':'on'}" data-act="nightToggle" aria-label="Нічна тема"></button></div>`;
   html+=`<h2 class="hl">Талісман</h2><div class="card">${S.mascot
    ?`<div class="mas">${mascotHTML('happy',season(),110)}<div style="flex:1"><div class="s" style="margin:0 0 10px">Твій власний талісман.</div><div class="qa" style="margin:0"><button class="btn sm soft" data-act="mascotUp">Інша картинка</button><button class="btn sm ghost" data-act="mascotReset">Альпаки</button></div></div></div>`
-   :`<div class="s" style="margin:0 0 12px">Альпака перевдягається щосезону — і колір застосунку разом із нею.</div><div class="seasons">${['autumn','winter','spring','summer'].map(k=>`<div class="${k===season()?'on':''}"><img src="${ALP[k]}" alt=""><span>${SEASON_NAME[k]}</span></div>`).join('')}</div><div class="qa"><button class="btn sm ghost" data-act="mascotUp">Поставити свою картинку</button></div>`}</div>`;
+   :`<div class="s" style="margin:0 0 12px">Альпака перевдягається щосезону — і колір застосунку разом із нею.</div><div class="seasons">${['autumn','winter','spring','summer'].map(k=>`<div class="${k===season()?'on':''}"><img src="${ALP[k]}" alt=""><span>${SEASON_NAME[k]}</span></div>`).join('')}</div><div class="qa"><button class="btn sm ghost" data-act="mascotUp">Поставити свою картинку</button></div>`}${nightRow}</div>`;
   const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
   const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
   html+=`<h2 class="hl">Дані й телефон</h2><div class="card"><div class="t">Резервна копія</div><div class="s">Усе зберігається лише на цьому телефоні. Раз на кілька тижнів зберігай копію у файл. Остання: <b>${S.lastBackup?dateLong(S.lastBackup):'ще не було'}</b></div>
@@ -1252,7 +1307,7 @@ function toast(msg,action){
   el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),action?6000:2600);
 }
 function confetti(){
-  const em=SEASON_EMO[season()];
+  const em=isNight()?['✨','⭐','🌙']:SEASON_EMO[season()];
   for(let i=0;i<26;i++){const c=document.createElement('div');c.className='conf';c.textContent=pick(em);
     c.style.left=Math.random()*100+'vw';c.style.animationDuration=(2.2+Math.random()*1.8)+'s';c.style.animationDelay=(Math.random()*.6)+'s';
     c.style.setProperty('--rot',(Math.random()*720-360)+'deg');c.style.fontSize=(18+Math.random()*16)+'px';
@@ -1440,6 +1495,7 @@ function tick(){
   if(S.work){const due=S.work.last+S.plan.breakMin*6e4;
     if(now>=due&&S.work.notified!==due){S.work.notified=due;S.work.idea=pick(BREAK_IDEAS);save();changed=true;
       notify('Час розімʼятися 🙆‍♀️',S.work.idea);buzz([300,120,300]);chime()}}
+  if(isNight()!==lastNight){changed=true;if(tab!=='today'){render();changed=false;checkBadges()}}
   if(changed){checkBadges();if(tab==='today')render()}
   else{const wl=$('#walkLeft');if(wl&&S.walk)wl.textContent=mmss(S.walk.end-now);const kl=$('#workLeft');if(kl&&S.work)kl.textContent=mmss(S.work.last+S.plan.breakMin*6e4-now)}
 }
@@ -1487,6 +1543,7 @@ const ACT={
   install:async()=>{if(!installEvt)return;installEvt.prompt();try{await installEvt.userChoice}catch(e){}installEvt=null;render()},
   reset:()=>askConfirm('Стерти всі дані й почати з нуля?','Стерти',()=>askConfirm('Точно? Це не можна скасувати.','Так, стерти',()=>{localStorage.removeItem(KEY);S=fresh();sel=todayS();tab='today';render(true);toast('Почали з чистого аркуша')},true),true),
   closeSheet:()=>closeSheet(),
+  nightToggle:()=>{S.nightTheme=S.nightTheme===false;save();render()},
   city:el=>{const r=ROUTE.find(x=>x.id===el.dataset.id);if(r)openPostcard(r,false)},
   buy:el=>{const id=el.dataset.id,x=SOUV[id];if(!x||S.souv[id]||!S.cities[x.city.id])return;
     const bal=computeStats().balance;if(bal<x.p)return toast(`Не вистачає ще ${x.p-bal} 🍃`);
