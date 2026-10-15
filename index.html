@@ -43,6 +43,9 @@
 .alp.twR .earR{animation:alpTwR .42s ease-out}
 .alp.nod .head{animation:alpNod .55s ease-in-out}
 .alp.jump .hop{animation:alpHop .72s cubic-bezier(.3,.7,.4,1)}
+.alp.jump2 .hop{animation:alpHop2 .52s cubic-bezier(.3,.7,.4,1)}
+@keyframes alpHop2{0%{transform:translateY(0) scale(1,1)}18%{transform:translateY(0) scale(1.025,.965)}48%{transform:translateY(-4.5%) scale(.985,1.025)}78%{transform:translateY(0) scale(1.012,.988)}100%{transform:translateY(0) scale(1,1)}}
+.alp .pop.cheer{color:var(--accent-ink,#9a4520)}
 .alp.pom .pompom{animation:alpPom .9s ease-out}
 .alp.flw .flower{animation:alpFlw 1.1s ease-in-out}
 .alp.sleep .breath{animation-duration:5.4s}
@@ -283,7 +286,7 @@ textarea.note:focus{border-color:var(--accent)}
 #peek{position:fixed;right:14px;bottom:calc(env(safe-area-inset-bottom) + 16px);z-index:39;transform:translateY(135%);transition:transform .42s cubic-bezier(.2,1.25,.4,1);pointer-events:none}
 #peek.show{transform:translateY(0)}
 #peek .pa .alp{pointer-events:auto}
-#peek .pb{position:absolute;right:calc(100% + 2px);bottom:74px;background:var(--card);border:1.5px dashed var(--line2);border-radius:14px 14px 4px 14px;padding:6px 11px;font-weight:800;font-size:13.5px;white-space:nowrap;box-shadow:var(--shadow);opacity:0;transform:scale(.6);transform-origin:100% 100%;transition:opacity .2s,transform .3s cubic-bezier(.2,1.4,.4,1)}
+#peek .pb{position:absolute;right:calc(100% + 2px);bottom:74px;background:var(--card);border:1.5px dashed var(--line2);border-radius:14px 14px 4px 14px;padding:6px 11px;font-weight:800;font-size:13.5px;line-height:1.3;width:max-content;max-width:min(230px,calc(100vw - 150px));box-shadow:var(--shadow);opacity:0;transform:scale(.6);transform-origin:100% 100%;transition:opacity .2s,transform .3s cubic-bezier(.2,1.4,.4,1)}
 #peek.show .pb{opacity:1;transform:none;transition-delay:.2s}
 html.peek #toast{bottom:calc(180px + env(safe-area-inset-bottom))}
 .masc-slot{flex:none}
@@ -672,6 +675,10 @@ class Alpaca{
   poke(){if(this.asleep){this.wake(2600);this.flash('twL',430);setTimeout(()=>this.flash('twR',430),200);setTimeout(()=>this.flash('blink',160),500);return}
     this.flash('winkR',420);this.flash('nod',560);this.flash('twL',430);setTimeout(()=>this.flash('twR',430),150);
     if(Math.random()<.4)setTimeout(()=>this.seasonFx(),300)}
+  cheer(label){if(this.asleep||this.mood==='sleepy')this.wake(3200);this.flash('jump2',520);setTimeout(()=>this.flash('blink',140),300);
+    if(Math.random()<.5)setTimeout(()=>this.flash(Math.random()<.5?'twL':'twR',430),120);
+    if(!label)return;const d=this.fx(label,'pop cheer',.5,.26,Math.max(12,this.h*.075));d.style.transform='translateX(-50%)';
+    d.animate([{transform:'translate(-50%,0)',opacity:0},{transform:'translate(-50%,-6px)',opacity:1,offset:.2},{transform:`translate(-50%,-${this.h*.15}px)`,opacity:0}],{duration:1200,easing:'ease-out'}).onfinish=()=>d.remove()}
   done(n=1){if(this.asleep||this.mood==='sleepy')this.wake(4200);this.flash('jump',740);setTimeout(()=>this.flash('blink',160),420);
     const d=this.fx(`+${n} 🍃`,'pop',.58,.28,Math.max(13,this.h*.085));
     d.animate([{transform:'translateY(0)',opacity:0},{transform:'translateY(-8px)',opacity:1,offset:.2},{transform:`translateY(-${this.h*.18}px)`,opacity:0}],{duration:1300,easing:'ease-out'}).onfinish=()=>d.remove()}
@@ -717,7 +724,7 @@ function save(){try{localStorage.setItem(KEY,JSON.stringify(S));saveFail=false}c
 const getDay=d=>S.days[d]||{};
 const mutDay=d=>S.days[d]||(S.days[d]={});
 
-const lastDone={},lastPct={};let alpReact=null,heroAlp=null;const ALP_H=150;
+const lastDone={},lastPct={},lastFr={};let alpReact=null,heroAlp=null;const ALP_H=150;
 function isNight(){if(S&&S.nightTheme===false)return false;const h=new Date().getHours();return h>=22||h<6}
 let lastNight=null;
 function applyNight(){const n=isNight();document.body.classList.toggle('night',n);
@@ -975,24 +982,36 @@ function placeAlp(){
   layer.style.left=(r.left+window.scrollX)+'px';layer.style.top=(r.top+window.scrollY)+'px';layer.style.visibility='visible';
   heroAlp.setMood(bearMood());
   const re=alpReact;alpReact=null;
-  if(re&&(re.perfect||re.pop>0)){
-    if(heroVisible()){if(re.perfect)heroAlp.perfect();else heroAlp.done(re.pop)}
-    else if(!stack.length&&!cq.length)peek(re.perfect?'perfect':'done',re.pop);  // якщо відкривається вікно нагороди — там своя альпака
+  if(re&&(re.perfect||re.pop>0||re.cheer)){
+    const kind=re.perfect?'perfect':re.pop>0?'done':'cheer';
+    if(heroVisible()){if(kind==='perfect')heroAlp.perfect();else if(kind==='done')heroAlp.done(re.pop);else heroAlp.cheer(re.cheer)}
+    else if(!stack.length&&!cq.length)peek(kind,re.pop,re.cheer,re.cheerId);  // якщо відкривається вікно нагороди — там своя альпака
   }
 }
+function progLabel(id){
+  const x=getDay(sel),h=x.h||{};
+  if(id==='steps')return `👣 ${fmt(x.steps||0)}`;
+  const hb=habitById(id);if(hb&&hb.type==='count')return `${hb.e} ${h[id]||0}/${habitTarget(hb)}`;
+  return hb?hb.e:'✓';
+}
+const CHEER_LINES={breaks:['Ще одна перерва! Спина дякує','Розімʼялась — молодчинка!'],walk:['Ще одна прогулянка!','Крок до моря 🌊'],water:['Ще склянка! 💧'],steps:['Кроки йдуть!','Ще трохи — і норма!']};
 function heroVisible(){const s=$('#mascSlot');if(!s)return false;const r=s.getBoundingClientRect(),navTop=$('#nav').getBoundingClientRect().top;
   return Math.min(r.bottom,navTop)-Math.max(r.top,0)>=r.height*0.55}
 const PEEK_LINES=['Так тримати!','Ще листочок! 🍃','Молодчинка!','Крок ближче до моря 🌊','Бачу-бачу! 👀','Є! 💪','Ура! 💗'];
 let peekAlp=null,peekT=null;
-function peek(kind,n){
+function peek(kind,n,label,cid){
   const box=$('#peek');if(S.mascot||!window.Alpaca||!box)return;
   const se=season();
   if(!peekAlp||peekAlp.season!==se){if(peekAlp)peekAlp.el.remove();peekAlp=new Alpaca(se,120);peekAlp.onTap=()=>window.scrollTo({top:0,behavior:'smooth'});$('.pa',box).appendChild(peekAlp.el)}
   peekAlp.start();peekAlp.mood=bearMood();peekAlp.wake(kind==='perfect'?5200:3200);
-  $('.pb',box).textContent=kind==='perfect'?pick(['Ідеальний день! 💗','Усе виконано! 🎉']):(n>1?`+${n} 🍃 Так тримати!`:pick(PEEK_LINES));
+  let txt;
+  if(kind==='perfect')txt=pick(['Ідеальний день! 💗','Усе виконано! 🎉']);
+  else if(kind==='cheer')txt=`${label} · ${pick(CHEER_LINES[cid]||['Так тримати!','Бачу-бачу! 👀'])}`;
+  else txt=n>1?`+${n} 🍃 Так тримати!`:pick(PEEK_LINES);
+  $('.pb',box).textContent=txt;
   box.classList.add('show');document.documentElement.classList.add('peek');
-  setTimeout(()=>{if(kind==='perfect')peekAlp.perfect();else peekAlp.done(n)},300);
-  clearTimeout(peekT);peekT=setTimeout(()=>{box.classList.remove('show');document.documentElement.classList.remove('peek')},kind==='perfect'?3800:2400);
+  setTimeout(()=>{if(kind==='perfect')peekAlp.perfect();else if(kind==='cheer')peekAlp.cheer();else peekAlp.done(n)},300);
+  clearTimeout(peekT);peekT=setTimeout(()=>{box.classList.remove('show');document.documentElement.classList.remove('peek')},kind==='perfect'?3800:kind==='cheer'?2100:2400);
 }
 window.addEventListener('resize',()=>placeAlp());
 try{document.fonts&&document.fonts.ready.then(()=>placeAlp())}catch(e){}
@@ -1028,7 +1047,11 @@ function renderToday(){
   const total=diff(P.start,P.finish)+1,dn=diff(P.start,sel)+1;
   const it=dayItems(sel),done=it.filter(i=>i.frac>=1).length,pct=it.reduce((a,b)=>a+b.frac,0)/it.length;
   const stW=computeStats(),prevDone=lastDone[sel];lastDone[sel]=done;const pop=prevDone!==undefined&&done>prevDone?done-prevDone:0;
-  const prevPct=lastPct[sel];lastPct[sel]=pct;alpReact={pop,perfect:prevPct!==undefined&&prevPct<0.999&&pct>=0.999};
+  const prevPct=lastPct[sel];lastPct[sel]=pct;
+  const prevFr=lastFr[sel],fr={};it.forEach(i=>fr[i.id]=i.frac);lastFr[sel]=fr;
+  let cheer=null,cheerId=null;
+  if(prevFr&&!pop)for(const i of it){if(i.frac>(prevFr[i.id]||0)+1e-9){cheer=progLabel(i.id);cheerId=i.id;break}}
+  alpReact={pop,perfect:prevPct!==undefined&&prevPct<0.999&&pct>=0.999,cheer,cheerId};
   let dayno;
   if(dn<1)dayno=`до старту<br><b>${days(1-dn)}</b>`;
   else if(dn>total)dayno=`фініш позаду<br><b>+${dn-total}</b> днів`;
