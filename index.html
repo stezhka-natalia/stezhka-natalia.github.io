@@ -777,9 +777,10 @@ function dayItems(d){
   out.push({id:'steps',frac:clamp((x.steps||0)/P.steps,0,1)});
   if(isTrainDay(d))out.push({id:'train',frac:x.train?1:0});
   for(let i=0;i<P.meals;i++)out.push({id:'meal'+i,frac:(x.meals&&x.meals[i])?1:0});
-  for(const hb of habitsFor(d)){const v=h[hb.id];out.push({id:hb.id,frac:hb.type==='count'?clamp((v||0)/habitTarget(hb),0,1):(v?1:0)})}
+  for(const hb of habitsFor(d)){const v=h[hb.id];if(hb.type==='count'){const tg=habitTarget(hb);out.push({id:hb.id,frac:clamp((v||0)/tg,0,1),units:Math.min(v||0,tg)})}else out.push({id:hb.id,frac:v?1:0})}
   return out;
 }
+function leavesOf(items){return items.reduce((a,i)=>a+(i.units!==undefined?i.units:(i.frac>=1?1:0)),0)}
 function dayPct(d){const it=dayItems(d);return it.reduce((a,b)=>a+b.frac,0)/it.length}
 function coreDone(d){const x=getDay(d),P=S.plan;if((x.steps||0)<P.steps)return false;for(let i=0;i<P.meals;i++)if(!(x.meals&&x.meals[i]))return false;return !isTrainDay(d)||!!x.train}
 function measuresSorted(){return [...S.measures].sort((a,b)=>a.d<b.d?-1:1)}
@@ -814,7 +815,7 @@ function computeStats(){
   let prev=null;
   for(let d=P.start;d<=end;d=addDays(d,1)){
     const x=getDay(d),h=x.h||{},items=dayItems(d);
-    const pct=items.reduce((a,b)=>a+b.frac,0)/items.length,full=items.filter(i=>i.frac>=1).length;
+    const pct=items.reduce((a,b)=>a+b.frac,0)/items.length,full=leavesOf(items);
     st.leaves+=full;if(full>0||(x.steps||0)>0)st.any=true;
     st.steps+=x.steps||0;if(x.train)st.trains++;
     st.walks+=h.walk||0;st.breaks+=h.breaks||0;
@@ -992,7 +993,7 @@ function progLabel(id){
   const x=getDay(sel),h=x.h||{};
   if(id==='steps')return `👣 ${fmt(x.steps||0)}`;
   const hb=habitById(id);if(hb&&hb.type==='count')return `${hb.e} ${h[id]||0}/${habitTarget(hb)}`;
-  return hb?hb.e:'✓';
+  return null;
 }
 const CHEER_LINES={breaks:['Ще одна перерва! Спина дякує','Розімʼялась — молодчинка!'],walk:['Ще одна прогулянка!','Крок до моря 🌊'],water:['Ще склянка! 💧'],steps:['Кроки йдуть!','Ще трохи — і норма!']};
 function heroVisible(){const s=$('#mascSlot');if(!s)return false;const r=s.getBoundingClientRect(),navTop=$('#nav').getBoundingClientRect().top;
@@ -1007,7 +1008,7 @@ function peek(kind,n,label,cid){
   let txt;
   if(kind==='perfect')txt=pick(['Ідеальний день! 💗','Усе виконано! 🎉']);
   else if(kind==='cheer')txt=`${label} · ${pick(CHEER_LINES[cid]||['Так тримати!','Бачу-бачу! 👀'])}`;
-  else txt=n>1?`+${n} 🍃 Так тримати!`:pick(PEEK_LINES);
+  else txt=label?`${label} · +${n} 🍃 ${pick(CHEER_LINES[cid]||['Так тримати!'])}`:n>1?`+${n} 🍃 Так тримати!`:pick(PEEK_LINES);
   $('.pb',box).textContent=txt;
   box.classList.add('show');document.documentElement.classList.add('peek');
   setTimeout(()=>{if(kind==='perfect')peekAlp.perfect();else if(kind==='cheer')peekAlp.cheer();else peekAlp.done(n)},300);
@@ -1046,11 +1047,11 @@ function renderToday(){
   const P=S.plan,t=todayS(),isT=sel===t,x=getDay(sel),h=x.h||{},se=season();
   const total=diff(P.start,P.finish)+1,dn=diff(P.start,sel)+1;
   const it=dayItems(sel),done=it.filter(i=>i.frac>=1).length,pct=it.reduce((a,b)=>a+b.frac,0)/it.length;
-  const stW=computeStats(),prevDone=lastDone[sel];lastDone[sel]=done;const pop=prevDone!==undefined&&done>prevDone?done-prevDone:0;
+  const lv=leavesOf(it),stW=computeStats(),prevDone=lastDone[sel];lastDone[sel]=lv;const pop=prevDone!==undefined&&lv>prevDone?lv-prevDone:0;
   const prevPct=lastPct[sel];lastPct[sel]=pct;
   const prevFr=lastFr[sel],fr={};it.forEach(i=>fr[i.id]=i.frac);lastFr[sel]=fr;
   let cheer=null,cheerId=null;
-  if(prevFr&&!pop)for(const i of it){if(i.frac>(prevFr[i.id]||0)+1e-9){cheer=progLabel(i.id);cheerId=i.id;break}}
+  if(prevFr)for(const i of it){if(i.frac>(prevFr[i.id]||0)+1e-9){cheer=progLabel(i.id);cheerId=i.id;break}}
   alpReact={pop,perfect:prevPct!==undefined&&prevPct<0.999&&pct>=0.999,cheer,cheerId};
   let dayno;
   if(dn<1)dayno=`до старту<br><b>${days(1-dn)}</b>`;
@@ -1068,7 +1069,7 @@ function renderToday(){
   // герой
   const cp=nextCheckpoint();
   html+=`<div class="card tape"><div class="hero">${S.mascot?mascotHTML(bearMood(),se,150):'<div class="masc-slot" id="mascSlot"></div>'}<button class="bubble" data-act="bubble">${esc(lines[bubbleIdx])}</button></div>
-   <div class="prog"><div class="lbl"><span>${isT?'Сьогодні':'Цей день'}: <b>${done} з ${it.length}</b></span><span class="leafbox">🍃 <b>${fmt(Math.max(0,stW.balance))}</b> <small class="${done?'':'z'}">+${done} ${isT?'сьогодні':'того дня'}</small>${pop?`<i class="leafpop">+${pop} 🍃</i>`:''}</span></div><div class="bar ${pct>=0.999?'ok':''}"><i style="width:${Math.round(pct*100)}%"></i></div></div>
+   <div class="prog"><div class="lbl"><span>${isT?'Сьогодні':'Цей день'}: <b>${done} з ${it.length}</b></span><span class="leafbox">🍃 <b>${fmt(Math.max(0,stW.balance))}</b> <small class="${lv?'':'z'}">+${lv} ${isT?'сьогодні':'того дня'}</small>${pop?`<i class="leafpop">+${pop} 🍃</i>`:''}</span></div><div class="bar ${pct>=0.999?'ok':''}"><i style="width:${Math.round(pct*100)}%"></i></div></div>
    ${cp&&isT?`<div class="next-cp"><span>🎯</span><span>Найближча контрольна точка — <b>${dateLong(cp.d)}</b>${cp.final?' (фініш)':''}: вага ≤ ${fmt(cp.w,1)} кг, талія ≤ ${fmt(cp.waist,1)}, стегна ≤ ${fmt(cp.hips,1)} см. Ще ${days(diff(t,cp.d))}.</span></div>`:''}
   </div>`;
   // нагадування про замір
@@ -1199,7 +1200,7 @@ function renderAwards(){
   let html=`<header class="top"><div class="logo">Нагороди</div><div class="dayno">зібрано<br><b>${got}</b> з ${list.length}</div></header>
    <div class="card tape" style="margin-top:16px"><div class="lvl"><div class="big">🍃</div><div style="flex:1"><b>${fmt(st.leaves)}</b> <span class="ink2" style="font-weight:700">${plural(st.leaves,'листочок','листочки','листочків')} зароблено</span>
    <div class="s">Рівень ${lvl} · ${LV[Math.min(lvl-1,LV.length-1)]} · до наступного ${rest} 🍃</div><div class="bar thin" style="margin-top:8px"><i style="width:${(per-rest)/per*100}%"></i></div></div></div>
-   <div class="s" style="margin-top:10px">Листочок — за кожен повністю виконаний пункт дня: норму кроків, тренування, кожен прийом їжі, кожну звичку. Зараз у гаманці 🍃 ${fmt(Math.max(0,st.balance))}${st.spent?` (на сувеніри витрачено ${fmt(st.spent)})`:''} — витрачай їх на сувеніри в розділі «Стежка». Рівень рахується за всіма заробленими.</div></div>`;
+   <div class="s" style="margin-top:10px">Листочок — за кожну дію: кожну прогулянку після їжі, кожну перерву, кожну склянку води, а ще за норму кроків, тренування, кожен прийом їжі й кожну галочку. Зараз у гаманці 🍃 ${fmt(Math.max(0,st.balance))}${st.spent?` (на сувеніри витрачено ${fmt(st.spent)})`:''} — витрачай їх на сувеніри в розділі «Стежка». Рівень рахується за всіма заробленими.</div></div>`;
   const cats=[...new Set(list.map(b=>b.cat))];
   for(const c of cats){
     const bs=list.filter(b=>b.cat===c);
@@ -1339,6 +1340,18 @@ function confetti(){
 const cq=[];
 function enqueue(fn){cq.push(fn);if(!stack.length)setTimeout(nextCeleb,60)}
 function nextCeleb(){if(stack.length||!cq.length)return;cq.shift()()}
+const WALK_LINES=['10 хвилин руху після їжі — і цукор у крові спокійніший','Плюс ≈ 1 000 кроків до моря 🌊','Маленька звичка з великим ККД — і ти її зробила','Тіло каже дякую 💗'];
+function openWalkDone(cnt,tg){
+  const full=cnt>=tg,leaf=cnt<=tg;
+  $('#toast').classList.remove('show');confetti();buzz([60,40,60]);
+  openSheet(`<div class="celeb-alp" style="display:flex;justify-content:center;margin:4px 0 6px">${S.mascot?mascotHTML('happy',season(),120):''}</div>
+   <h3>Прогулянку зараховано! 🐾</h3>
+   <p class="sub" style="font-weight:800;font-size:16px;color:var(--ink)">🚶‍♀️ ${Math.min(cnt,tg)} з ${tg} сьогодні${leaf?' · +1 🍃':' · бонус понад план'}</p>
+   <p class="sub">${full&&cnt===tg?'Усі прогулянки на сьогодні є!':pick(WALK_LINES)}</p>
+   <button class="btn acc block" style="margin-top:12px" data-act="closeSheet">Ура! 💗</button>`,{cls:'center',mount:w=>{
+     if(S.mascot||!window.Alpaca)return;const a=new Alpaca(season(),130);a.mood='norm';$('.celeb-alp',w).appendChild(a.el);
+     setTimeout(()=>{if(full)a.perfect();else a.done(1)},320)}});
+}
 function celebrate(list){
   confetti();buzz([60,40,60]);
   const one=list[0];
@@ -1352,7 +1365,7 @@ function askConfirm(text,ok,fn,danger){
   openSheet(`<h3>${esc(text)}</h3><div class="btns"><button class="btn ghost" data-act="closeSheet">Скасувати</button><button class="btn ${danger?'danger':'acc'}" id="okBtn">${esc(ok)}</button></div>`,
    {mount:w=>{$('#okBtn',w).onclick=()=>{closeSheet();fn()}}});
 }
-function buzz(p){try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}}
+function buzz(p){try{if(navigator.userActivation&&!navigator.userActivation.hasBeenActive)return;navigator.vibrate&&navigator.vibrate(p)}catch(e){}}
 function afterChange(){save();checkBadges();render()}
 
 /* ── шторки з формами ── */
@@ -1514,7 +1527,9 @@ function tick(){
   const now=Date.now();let changed=false;
   const t=todayS();if(t!==lastToday){if(sel===lastToday)sel=t;lastToday=t;changed=true}
   if(S.walk&&now>=S.walk.end){const d=mutDay(S.walk.d);d.h=d.h||{};d.h.walk=(d.h.walk||0)+1;S.walk=null;save();changed=true;
-    toast('Прогулянку зараховано 🐾');notify('Прогулянку зараховано 🐾','10 хвилин руху — є!');buzz([200,100,200]);chime()}
+    notify('Прогулянку зараховано 🐾','10 хвилин руху — є! +1 🍃');buzz([200,100,200]);chime();
+    const hb=habitById('walk'),cnt=d.h.walk,tg=hb?habitTarget(hb):2;
+    enqueue(()=>openWalkDone(cnt,tg))}  // вікно чекає, поки ти подивишся — не пропустиш навіть з вимкненим екраном
   if(S.work){const due=S.work.last+S.plan.breakMin*6e4;
     if(now>=due&&S.work.notified!==due){S.work.notified=due;S.work.idea=pick(BREAK_IDEAS);save();changed=true;
       notify('Час розімʼятися 🙆‍♀️',S.work.idea);buzz([300,120,300]);chime()}}
