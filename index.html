@@ -451,6 +451,10 @@ html.peek #toast{bottom:calc(180px + env(safe-area-inset-bottom))}
 .mas{display:flex;align-items:center;gap:14px}
 .mas .masc{width:96px}
 .foot{text-align:center;color:var(--muted);font-size:12px;margin:24px 0 0}
+.rsbox{background:var(--paper2);border-radius:14px;padding:10px 12px;font-size:13.5px;line-height:1.45;color:var(--ink2);margin:12px 0 0}
+.rsbox b{color:var(--ink)}
+.chkrow{display:flex;gap:10px;align-items:center;font-weight:700;font-size:14px;margin:14px 0 0}
+.chkrow input{width:22px;height:22px;accent-color:var(--accent);flex:none}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -785,7 +789,7 @@ function dayPct(d){const it=dayItems(d);return it.reduce((a,b)=>a+b.frac,0)/it.l
 function coreDone(d){const x=getDay(d),P=S.plan;if((x.steps||0)<P.steps)return false;for(let i=0;i<P.meals;i++)if(!(x.meals&&x.meals[i]))return false;return !isTrainDay(d)||!!x.train}
 function measuresSorted(){return [...S.measures].sort((a,b)=>a.d<b.d?-1:1)}
 function latest(key){const m=measuresSorted().filter(m=>m[key]!=null&&!isNaN(m[key]));return m.length?m[m.length-1]:null}
-function minOf(key){const v=S.measures.map(m=>m[key]).filter(v=>v!=null&&!isNaN(v));return v.length?Math.min(...v):null}
+function minOf(key){const v=S.measures.filter(m=>m.d>=S.plan.start).map(m=>m[key]).filter(v=>v!=null&&!isNaN(v));return v.length?Math.min(...v):null}
 function checkpoints(){
   const P=S.plan,out=[];
   for(let k=1;;k++){const d=addMonths(P.start,k);if(d>=P.finish)break;
@@ -834,7 +838,7 @@ function computeStats(){
   }
   st.km=kmOf(st.steps);
   st.minW=minOf('w');st.minWaist=minOf('waist');st.minHips=minOf('hips');
-  st.meas=S.measures.length;st.wins=S.wins.length;
+  st.meas=S.measures.filter(m=>m.d>=P.start).length;st.wins=S.wins.filter(w=>w.d>=P.start).length;
   st.weeksDone=0;const kinds=new Set();
   const lastI=focusIdx(end<P.finish?end:P.finish);
   for(let i=0;i<=lastI;i++){const w=weekInfo(i);if(w.done){st.weeksDone++;if(themeOk(w.f))kinds.add(w.f.id)}}
@@ -1056,7 +1060,7 @@ function renderToday(){
   let dayno;
   if(dn<1)dayno=`до старту<br><b>${days(1-dn)}</b>`;
   else if(dn>total)dayno=`фініш позаду<br><b>+${dn-total}</b> днів`;
-  else dayno=`день <b>${dn}</b> з ${total}<br>до літа ${days(total-dn)}`;
+  else dayno=`день <b>${dn}</b> з ${total}<br>до фінішу ${days(total-dn)}`;
   const dObj=parse(sel);
   const ttl=isT?`<b>Сьогодні</b>, ${WD[dObj.getDay()]}, ${dateLong(sel)}`:sel===addDays(t,-1)?`<b>Учора</b>, ${dateLong(sel)} · можна дописати`:`<b>${dateLong(sel)}</b>, ${WD[dObj.getDay()]} · <button class="link" data-act="day" data-d="${t}" style="color:var(--accent-ink);font-weight:800;text-decoration:underline">до сьогодні</button>`;
   const lines=bearLines();if(bubbleIdx<0||bubbleIdx>=lines.length)bubbleIdx=0;
@@ -1152,7 +1156,8 @@ function renderPath(){
   let rows='';ROUTE.forEach(r=>{const reached=st.steps>=stopSteps(r),when=addDays(P.start,Math.max(0,Math.ceil(stopSteps(r)/P.steps)-1));
     rows+=`<button class="stop ${reached&&r.km?'reached':''} ${nx===r?'next':''}" data-act="city" data-id="${r.id}"><span class="nm">${r.n}</span><span class="km">${r.d} · ${r.km===0?'старт '+dateShort(P.start):reached?'пройдено ✓':'за графіком — '+dateLong(when)}</span></button>`});
   html+=`<h2 class="hl">Маршрут</h2><div class="card"><div class="route" style="height:${H}px"><svg width="90" height="${H}" viewBox="0 0 90 ${H}"><defs><clipPath id="rClip"><circle r="20.5"/></clipPath></defs><path id="rBase" class="rbase" d="${d}"/><path id="rProg" class="rprog" d="${d}" style="stroke-dasharray:0 100000"/>${nodes}${ghost}${marker}</svg>${rows}</div>
-   <div class="s" style="margin-top:6px">Маршрут підлаштований під твій план: проходиш ${fmt(P.steps)} кроків щодня — і ${dateLong(P.finish)} ти біля моря. Відстані між містами умовні. ◌ — де ти була б за графіком.</div></div>`;
+   <div class="s" style="margin-top:6px">Маршрут підлаштований під твій план: проходиш ${fmt(P.steps)} кроків щодня — і ${dateLong(P.finish)} ти біля моря. Відстані між містами умовні. ◌ — де ти була б за графіком.</div>
+   <button class="btn ghost sm block" style="margin-top:14px" data-act="restart">↺ Почати шлях заново з сьогодні</button></div>`;
   const gotN=ROUTE.filter(r=>S.cities[r.id]).length;
   html+=`<h2 class="hl">Листівки <small>${gotN} з ${ROUTE.length}</small></h2><div class="pcs">${ROUTE.map(r=>{const g=S.cities[r.id];
     return `<button class="pcmini ${g?'':'lock'}" data-act="city" data-id="${r.id}"><span class="st">${g?r.e:'🔒'}</span><span class="nm">${r.n}</span><span class="dt">${g?dateLong(g):'ще ≈ '+days(cityLeft(r).days)}</span></button>`}).join('')}</div>`;
@@ -1254,15 +1259,16 @@ function chartHTML(mk){
   const band=up.concat(lo.reverse()).map(p=>p.map(n=>n.toFixed(1)).join(',')).join(' ');
   const r=vMax-vMin,step=r<=7?1:r<=14?2:r<=30?5:10;
   let grid='';for(let v=Math.ceil(vMin/step)*step;v<=vMax;v+=step)grid+=`<line x1="${ml}" x2="${W-mr}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${ml-6}" y="${Y(v)+4}" text-anchor="end">${v}</text>`;
-  let xt='';const s=parse(P.start);for(let k=1;k<=12;k++){const d=ymd(new Date(s.getFullYear(),s.getMonth()+k,1));const tt=diff(P.start,d);if(tt>tMax)break;if(tt<tMin)continue;
+  let xt='';const s=parse(P.start);for(let k=-12;k<=12;k++){const d=ymd(new Date(s.getFullYear(),s.getMonth()+k,1));const tt=diff(P.start,d);if(tt>tMax)break;if(tt<tMin)continue;
     xt+=`<line x1="${X(tt)}" x2="${X(tt)}" y1="${H-mb}" y2="${H-mb+4}" stroke="var(--line2)"/><text x="${X(tt)}" y="${H-8}" text-anchor="middle">${MON_S[parse(d).getMonth()]}</text>`}
   const line=pts.length>1?`<polyline points="${pts.map(p=>`${X(p.t).toFixed(1)},${Y(p.v).toFixed(1)}`).join(' ')}" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`:'';
   const dots=pts.map(p=>{const tip=`${dateShort(p.d)} · ${fmt(p.v,1)} ${M.u}`;return `<circle cx="${X(p.t)}" cy="${Y(p.v)}" r="5" fill="var(--ink)" stroke="var(--card)" stroke-width="2"/><circle cx="${X(p.t)}" cy="${Y(p.v)}" r="16" fill="transparent" data-act="pt" data-x="${(X(p.t)/W*100).toFixed(2)}" data-y="${(Y(p.v)/H*100).toFixed(2)}" data-tip="${esc(tip)}"/>`}).join('');
   const lp=pts[pts.length-1];
   const lastLbl=lp?`<text x="${Math.min(X(lp.t)+9,W-mr-30)}" y="${Y(lp.v)-9}" style="fill:var(--ink);font-weight:800;font-size:12px">${fmt(lp.v,1)}</text>`:'';
   const goal=`<line x1="${X(T)}" x2="${X(T)}" y1="${Y(g)}" y2="${Y(g)-16}" stroke="var(--ink2)" stroke-width="1.5"/><path d="M${X(T)} ${Y(g)-16}l-12 4 12 4z" fill="var(--accent)"/><circle cx="${X(T)}" cy="${Y(g)}" r="3.5" fill="var(--accent)"/><text x="${X(T)-16}" y="${Y(g)+4}" text-anchor="end" style="fill:var(--accent-ink);font-weight:800">ціль ${fmt(g,1)}</text>`;
+  const startMark=tMin<0?`<line x1="${X(0)}" x2="${X(0)}" y1="${mt}" y2="${H-mb}" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="3 4"/><text x="${X(0)+4}" y="${H-mb-6}" style="fill:var(--accent-ink);font-weight:800">старт</text>`:'';
   const bandLbl=`<text x="${X(T*0.7)}" y="${Y(Math.min(A(T*0.7),B(T*0.7)))+15}" text-anchor="middle" style="fill:var(--ok);font-weight:800">коридор плану</text>`;
-  return `<div class="chart" id="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Графік: ${M.n}">${grid}<polygon points="${band}" fill="var(--ok)" opacity=".16"/>${bandLbl}${xt}<line x1="${ml}" x2="${W-mr}" y1="${H-mb}" y2="${H-mb}" stroke="var(--line2)"/>${goal}${line}${dots}${lastLbl}</svg><div class="tip" hidden></div></div>`;
+  return `<div class="chart" id="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Графік: ${M.n}">${grid}<polygon points="${band}" fill="var(--ok)" opacity=".16"/>${bandLbl}${xt}${startMark}<line x1="${ml}" x2="${W-mr}" y1="${H-mb}" y2="${H-mb}" stroke="var(--line2)"/>${goal}${line}${dots}${lastLbl}</svg><div class="tip" hidden></div></div>`;
 }
 
 /* ── Я ── */
@@ -1282,7 +1288,9 @@ function renderMe(){
    <span>Старт → фініш</span><b>${dateShort(P.start)}.${P.start.slice(2,4)} → ${dateShort(P.finish)}.${P.finish.slice(2,4)}</b>
    <span>Вага</span><b>${fmt(P.w0,1)} → ${fmt(P.wGoal,1)} кг</b><span>Талія</span><b>${fmt(P.waist0,1)} → ≈${fmt(P.waistGoal,1)} см</b><span>Стегна</span><b>${fmt(P.hips0,1)} → ≈${fmt(P.hipsGoal,1)} см</b>
    <span>Кроки щодня</span><b>${fmt(P.steps)}</b><span>Прийомів їжі</span><b>${P.meals}</b><span>Тренування</span><b>${P.trainEvery===1?'щодня':P.trainEvery===2?'через день':`раз на ${P.trainEvery} дні`}</b>
-   <span>Перерва від сидіння</span><b>кожні ${P.breakMin} хв</b></div></div>`;
+   <span>Перерва від сидіння</span><b>кожні ${P.breakMin} хв</b></div>
+   ${(S.restarts||[]).length?`<div class="s" style="margin-top:10px">Стежку почато заново ${dateLong(P.start)} · уперше — ${dateLong(S.restarts[0].from)}</div>`:''}
+   <button class="btn soft block" style="margin-top:14px" data-act="restart">↺ Почати стежку заново з сьогодні</button></div>`;
   html+=`<h2 class="hl">Маленькі звички</h2><div class="card">${allHabits().map(hb=>{const on=S.habits.on[hb.id]!==undefined?S.habits.on[hb.id]:hb.on!==false;const custom=hb.id.startsWith('c_');
     return `<div class="row"><div class="ico">${esc(hb.e)}</div><div class="txt"><div class="t">${esc(hb.n)}</div><div class="s">${hb.type==='count'?`лічильник, ціль ${habitTarget(hb)} на день`:'галочка'}${custom?` · <button class="link" data-act="delHabit" data-id="${hb.id}">видалити</button>`:''}</div></div><button class="sw ${on?'on':''}" data-act="habToggle" data-id="${hb.id}" aria-label="Увімкнути ${esc(hb.n)}"></button></div>`}).join('')}
    <button class="btn soft block" style="margin-top:12px" data-act="addHabit">＋ Своя звичка</button></div>`;
@@ -1437,6 +1445,72 @@ function openListSheet(k){
    <div class="btns"><button class="btn ghost" data-act="closeSheet">Скасувати</button><button class="btn acc" id="lSave">Зберегти</button></div>`,
   {mount:w=>{$('#lSave',w).onclick=()=>{const v=$('#lIn',w).value.split('\n').map(s=>s.trim()).filter(Boolean);S[k]=v.length?v:(k==='why'?[...DEF_WHY]:[...DEF_FINISH]);closeSheet();save();render()}}});
 }
+function saveBackup(suffix){
+  try{S.lastBackup=todayS();save();const blob=new Blob([JSON.stringify(S)],{type:'application/json'});const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);a.download=`stezhka-${suffix?suffix+'-':''}${todayS()}.json`;document.body.appendChild(a);a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);return true}catch(e){return false}
+}
+function planMonths(){
+  const a=parse((S.restarts&&S.restarts[0]&&S.restarts[0].from)||S.plan.start),b=parse(S.plan.finish);
+  let m=(b.getFullYear()-a.getFullYear())*12+b.getMonth()-a.getMonth();if(b.getDate()<a.getDate())m--;return Math.max(1,m);
+}
+function openRestartSheet(){
+  const P=S.plan,t=todayS(),lw=latest('w'),lwa=latest('waist'),lh=latest('hips');
+  const val=(m,k,d)=>fmt(m?m[k]:d,1);
+  openSheet(`<h3>Почати стежку заново 🌱</h3>
+   <p class="sub">Стежка почнеться з цього дня, і все перерахується від нього: день 1, маршрут від Києва, контрольні точки щомісяця, теми й виклики тижнів.</p>
+   <div class="grid2"><label class="field"><span>Новий старт</span><input id="rsD" type="date" value="${t}" max="${t}"></label>
+   <label class="field"><span>Фініш</span><input id="rsF" type="date" value="${addMonths(t,planMonths())}"></label></div>
+   <p class="sub" id="rsLen" style="margin:-4px 0 6px;font-weight:800;color:var(--ink)"></p>
+   <div class="field" style="margin-bottom:0"><span>Заміри на старті${lw?` · останні були ${dateLong(lw.d)}`:''}</span></div>
+   <div class="grid3"><label class="field" style="margin-top:4px"><span>Вага, кг</span><input id="rsW" inputmode="decimal" value="${val(lw,'w',P.w0)}"></label>
+   <label class="field" style="margin-top:4px"><span>Талія, см</span><input id="rsWa" inputmode="decimal" value="${val(lwa,'waist',P.waist0)}"></label>
+   <label class="field" style="margin-top:4px"><span>Стегна, см</span><input id="rsH" inputmode="decimal" value="${val(lh,'hips',P.hips0)}"></label></div>
+   <p class="sub" style="margin:0">Якщо зважилась сьогодні — впиши нові числа. Від них рахуватиметься «мінус 1 кг і 1 см щомісяця». Цілі (${fmt(P.wGoal,1)} кг, ${fmt(P.waistGoal,1)} і ${fmt(P.hipsGoal,1)} см) лишаються.</p>
+   <div class="rsbox"><b>Почнеться заново:</b> маршрут і листівки, листочки й сувеніри, нагороди, виклики тижнів.<br><b>Лишиться:</b> історія замірів і перемог, нотатки, твої звички, теми й налаштування.</div>
+   <label class="chkrow"><input type="checkbox" id="rsBk" checked> Спершу зберегти копію в файл</label>
+   <div class="btns"><button class="btn ghost" data-act="closeSheet">Скасувати</button><button class="btn acc" id="rsGo">Почати заново</button></div>`,
+  {mount:w=>{
+    const iD=$('#rsD',w),iF=$('#rsF',w),lab=$('#rsLen',w);let fTouched=false;
+    const upd=()=>{const d=iD.value||t;if(!fTouched)iF.value=addMonths(d,planMonths());iF.min=addDays(d,28);
+      const f=iF.value;if(!f||f<=d){lab.textContent='Фініш має бути пізніше за старт';return}
+      const a=parse(d),b=parse(f);let m=(b.getFullYear()-a.getFullYear())*12+b.getMonth()-a.getMonth();if(b.getDate()<a.getDate())m--;
+      const extra=diff(addMonths(d,m),f),n=diff(d,f)+1;
+      lab.textContent=`План — ${m} ${plural(m,'місяць','місяці','місяців')}${extra?` і ${days(extra)}`:''} · ${n} ${plural(n,'день','дні','днів')}`};
+    iD.addEventListener('change',upd);iF.addEventListener('change',()=>{fTouched=true;upd()});upd();
+    $('#rsGo',w).onclick=()=>{
+    const d=iD.value||t,fin=iF.value;
+    if(d>t)return toast('Старт не може бути в майбутньому');
+    if(!fin||diff(d,fin)<28)return toast('Фініш має бути хоча б через місяць після старту');
+    const nw=num($('#rsW',w).value),nwa=num($('#rsWa',w).value),nh=num($('#rsH',w).value);
+    if([nw,nwa,nh].some(v=>isNaN(v)||v<=0))return toast('Перевір заміри');
+    if(nw<=P.wGoal||nwa<=P.waistGoal||nh<=P.hipsGoal)return toast('Заміри вже на рівні цілі — зміни цілі в «Цифрах плану»');
+    const bk=$('#rsBk',w).checked;closeSheet();
+    setTimeout(()=>restartFrom(d,{w:+nw.toFixed(1),waist:+nwa.toFixed(1),hips:+nh.toFixed(1)},{w:lw,waist:lwa,hips:lh},bk,fin),bk?350:0)}}});
+}
+function restartFrom(d,base,last,backup,fin){
+  if(backup&&!saveBackup('do-perezapusku'))toast('Копію зберегти не вдалося');
+  const snap=JSON.stringify({plan:S.plan,cities:S.cities,souv:S.souv,badges:S.badges,weeks:S.weeks,weekTheme:S.weekTheme,measures:S.measures,restarts:S.restarts||[]});
+  S.restarts=(S.restarts||[]).concat([{d:todayS(),from:S.plan.start,to:d}]);
+  S.plan={...S.plan,start:d,finish:fin||S.plan.finish,w0:base.w,waist0:base.waist,hips0:base.hips};
+  // нові числа записуємо як замір; ті самі, що й останній замір, — ні (щоб не плодити копій)
+  let m=S.measures.find(x=>x.d===d);
+  for(const k of ['w','waist','hips']){const l=last[k];if(l&&l[k]===base[k]&&l.d!==d)continue;if(!m){m={d};S.measures.push(m)}m[k]=base[k]}
+  S.cities={};S.souv={};S.badges={};S.weeks={};S.weekTheme={};
+  sel=todayS();calMonth=todayS().slice(0,7);bubbleIdx=-1;
+  save();checkBadges(true);render();
+  const P=S.plan,cp=checkpoints()[0],total=diff(P.start,P.finish)+1,dn=diff(P.start,todayS())+1;
+  confetti();buzz([60,40,60]);
+  openSheet(`<div class="celeb-alp" style="display:flex;justify-content:center;margin:4px 0 6px">${S.mascot?mascotHTML('happy',season(),120):''}</div>
+   <h3>Новий старт! 🌱</h3>
+   <p class="sub" style="font-weight:800;font-size:16px;color:var(--ink)">День ${dn} з ${total} · фініш ${dateLong(P.finish)} ${parse(P.finish).getFullYear()}</p>
+   <p class="sub">Маршрут знову починається в Києві 🌰. ${cp?`Перша контрольна точка — ${dateLong(cp.d)}: вага ≤ ${fmt(cp.w,1)} кг, талія ≤ ${fmt(cp.waist,1)}, стегна ≤ ${fmt(cp.hips,1)} см.`:''}</p>
+   <div class="btns"><button class="btn ghost" id="rsUndo">Скасувати</button><button class="btn acc" id="rsOk">Вперед! 🌱</button></div>`,{cls:'center',mount:w=>{
+     if(!S.mascot&&window.Alpaca){const a=new Alpaca(season(),130);a.mood='norm';$('.celeb-alp',w).appendChild(a.el);setTimeout(()=>a.perfect(),320)}
+     $('#rsOk',w).onclick=()=>{closeSheet();tab='today';render(true)};
+     $('#rsUndo',w).onclick=()=>{cq.length=0;Object.assign(S,JSON.parse(snap));save();checkBadges(true);closeSheet();render();toast('Скасовано — усе як було')};
+   }});
+}
 function openPlanSheet(){
   const P=S.plan,f=(id,l,v,t='text',a='')=>`<label class="field"><span>${l}</span><input id="p_${id}" type="${t}" value="${esc(v)}" ${a}></label>`;
   const sel_=(id,l,v,opts)=>`<label class="field"><span>${l}</span><select id="p_${id}">${opts.map(o=>`<option value="${o[0]}" ${String(o[0])===String(v)?'selected':''}>${o[1]}</option>`).join('')}</select></label>`;
@@ -1568,6 +1642,7 @@ const ACT={
   badge:el=>openBadge(el.dataset.id),
   editList:el=>openListSheet(el.dataset.k),
   editPlan:()=>openPlanSheet(),
+  restart:()=>openRestartSheet(),
   habToggle:el=>{const id=el.dataset.id;S.habits.on[id]=!habitOn(id);refreshCurrentTheme();save();render()},
   themeToggle:el=>{const id=el.dataset.id;
     if(!S.themesOff[id]&&FOCUS.filter(themeOk).length<=1)return toast('Хоча б одна тема має лишитися');
